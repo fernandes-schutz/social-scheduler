@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
@@ -48,23 +49,36 @@ PUBLISHED = "published.csv"
 # Utilidades HTTP
 # ---------------------------------------------------------------------------
 
-def post(caminho, campos):
+def post(caminho, campos, token=None):
     """Faz um POST no Graph API e devolve a resposta como dicionario."""
     campos = dict(campos)
-    campos["access_token"] = TOKEN
+    campos["access_token"] = token or TOKEN
     dados = urllib.parse.urlencode(campos).encode("utf-8")
     req = urllib.request.Request(API + caminho, data=dados, method="POST")
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode("utf-8"))
 
 
-def get(caminho, campos=None):
+def get(caminho, campos=None, token=None):
     """Faz um GET no Graph API e devolve a resposta como dicionario."""
     campos = dict(campos or {})
-    campos["access_token"] = TOKEN
+    campos["access_token"] = token or TOKEN
     url = API + caminho + "?" + urllib.parse.urlencode(campos)
     with urllib.request.urlopen(url, timeout=60) as r:
         return json.loads(r.read().decode("utf-8"))
+
+
+# O Facebook exige um token da propria Pagina para publicar nela.
+# O Instagram aceita o token do usuario do sistema direto; o Facebook nao.
+_token_pagina = None
+
+
+def token_da_pagina():
+    global _token_pagina
+    if _token_pagina is None:
+        r = get("/%s" % PAGE_ID, {"fields": "access_token"})
+        _token_pagina = r["access_token"]
+    return _token_pagina
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +117,7 @@ def publica_facebook(img_url, legenda):
         "url": img_url,
         "caption": legenda,
         "published": "true",
-    })
+    }, token=token_da_pagina())
     return r.get("post_id") or r.get("id")
 
 
@@ -181,6 +195,11 @@ def main():
                 registra(chave, rede, ident)
                 print("publicado em %s: %s (%s)" % (rede, linha["imagem"], ident))
                 contador += 1
+            except urllib.error.HTTPError as e:
+                # A mensagem util da Meta vem no corpo da resposta, nao no codigo.
+                detalhe = e.read().decode("utf-8", "replace")
+                print("FALHOU em %s (%s): %s | %s" % (
+                    rede, linha["imagem"], e, detalhe))
             except Exception as e:
                 print("FALHOU em %s (%s): %s" % (rede, linha["imagem"], e))
 
