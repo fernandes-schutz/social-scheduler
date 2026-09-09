@@ -2,7 +2,7 @@ name: Publicar posts
 
 on:
   schedule:
-    - cron: "*/15 0,10-23 * * * *"
+    - cron: "*/15 0-1,10-23 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
