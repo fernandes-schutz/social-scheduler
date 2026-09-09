@@ -1,0 +1,41 @@
+name: Publicar posts
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Modo de teste (1 = nao publica nada)"
+        default: "1"
+
+permissions:
+  contents: write
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publicar
+        env:
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+        run: python publish.py
+
+      - name: Registrar o que foi publicado
+        run: |
+          if [ -n "$(git status --porcelain published.csv)" ]; then
+            git config user.name "github-actions"
+            git config user.email "actions@github.com"
+            git add published.csv
+            git commit -m "registro de publicacao"
+            git push
+          fi
