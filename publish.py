@@ -154,6 +154,7 @@ def main():
     agora = datetime.now(TZ)
     feitos = ja_publicados()
     contador = 0
+    falhas = 0
 
     with open(SCHEDULE, newline="", encoding="utf-8") as f:
         linhas = list(csv.DictReader(f))
@@ -200,11 +201,20 @@ def main():
                 detalhe = e.read().decode("utf-8", "replace")
                 print("FALHOU em %s (%s): %s | %s" % (
                     rede, linha["imagem"], e, detalhe))
+                falhas += 1
             except Exception as e:
                 print("FALHOU em %s (%s): %s" % (rede, linha["imagem"], e))
+                falhas += 1
 
     if DRY_RUN:
         print("\nModo de teste. Nada foi publicado de verdade.")
+
+    # Terminar com erro faz a execucao ficar vermelha no GitHub, que e o que
+    # dispara o e-mail e a notificacao. Sem isso, post que nao saiu passa
+    # despercebido porque a execucao aparece verde.
+    if falhas:
+        print("\n%d publicacao(oes) falharam." % falhas)
+        return 1
     return 0
 
 

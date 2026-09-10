@@ -2,8 +2,10 @@ name: Publicar posts
 
 on:
   schedule:
-    - cron: "*/15 0-1,10-23 * * *"
+    # A cada 15 minutos. O GitHub pode atrasar alguns minutos.
+    - cron: "*/15 * * * *"
   workflow_dispatch:
+    # Permite rodar na mao pelo site, util para testar.
     inputs:
       dry_run:
         description: "Modo de teste (1 = nao publica nada)"
